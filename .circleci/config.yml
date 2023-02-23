@@ -1,26 +1,23 @@
 version: '2.1'
+#define commands globally so that we can use it in multiple jobs
+commands:
+  param_ex:
+    steps:
+      - run:
+          command: |  
+            python3 -m pip install --upgrade pip
+            pip install -r requirements.txt
 jobs:
   build:
     docker:
       - image: cimg/python:3.11.2
     steps:
       - checkout 
-      - restore_cache:
-          key: python-requirements-V1-{{ checksum "requirements.txt" }}
-      - run:
-          name: Install pip and requirement
-          command: |
-            python3 -m pip install --upgrade pip
-            pip install -r requirements.txt
+      - param_ex
       - run:
           name: Running main file
           command: python3 billing_system.py
-      - save_cache:
-          key: python-requirements-V1-{{ checksum "requirements.txt" }}
-          paths:
-            - "~/.cache/pip"
-            - "/usr/local/lib/python3.10/site-packages"
-            - "/usr/local/lib/site-python"
+
 
   unit-test-1:
       docker:
@@ -47,12 +44,32 @@ jobs:
       - checkout
       - setup_remote_docker
       - run: |
-          docker build . -t akhil_cci_1
-          docker images | grep akhil
-          docker save -o akhil_cci_1.tar akhil_cci_1
-          ls -ltrh
-      # - store_artifacts:
-      #     path: cci_image/
+          docker build . -t ${CIRCLE_BRANCH}_${Environment}:${CIRCLE_BUILD_NUM}
+          docker images 
+          mkdir -p cci_image
+          docker save -o cci_image/${CIRCLE_BRANCH}_{Environment}:{CIRCLE_BUILD_NUM}.tar ${CIRCLE_BRANCH}_${Environment}:{CIRCLE_BUILD_NUM}
+          ls -ltrh cci_image
+      - store_artifacts:
+          path: cci_image/
+
+
+  build_cache:
+    docker:
+      - image: cimg/python:3.11.2
+    steps:
+      - checkout
+      - restore_cache:
+          key: python-requirements-V1-{{ checksum "requirements.txt" }}
+      - param_ex
+      - run:
+          name: Running main file
+          command: python3 billing_system.py
+      - save_cache:
+          key: python-requirements-V1-{{ checksum "requirements.txt" }}
+          paths:
+            - "~/.cache/pip"
+            - "/usr/local/lib/python3.10/site-packages"
+            - "/usr/local/lib/site-python"         
 
 
 workflows:
@@ -75,11 +92,27 @@ workflows:
           requires:
             - need_approval
 
-  # workflow_two:
-  #   triggers:
-  #     - schedule:
-  #         cron: "0 17 * * *"
-  #         filters: 
-  #           branches:
-  #             only:
-  #               - akhil_caselet                      
+  workflow_two:
+    triggers:
+      - schedule:
+          cron: "0 17 * * *"
+          filters: 
+            branches:
+              only:
+                - akhil_caselet     
+    jobs:
+      - build_cache
+      - unit-test-1:
+          requires:
+            - build_cache
+      - unit-test-2:
+          requires:
+            - unit-test-1
+      - approval:
+          type: approval
+          requires:
+              - unit-test-2
+      - create_artifacts_and_zip:
+          requires:
+            - approval                
+

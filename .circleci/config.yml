@@ -1,0 +1,123 @@
+version: 2.1
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.10.1
+    steps:
+      - checkout
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - restore_cache:
+          keys: 
+            - cache-v1-{{ checksum "requirements.txt" }}
+      - run : 
+          name: installing pip and requirements
+          command: |
+            python3 -m pip install --upgrade pip
+            pip install -r requirements.txt
+      - run:
+          name: Running application
+          command: |
+            python billing_system.py
+      - save_cache:
+          key: cache-v1-{{ checksum "requirements.txt" }}
+          paths:
+            - "/usr/local/bin"
+  test1:
+    docker:
+      - image: cimg/python:3.10.1
+    steps:
+      - checkout
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - restore_cache:
+          keys: 
+            - cache-v1-{{ checksum "requirements.txt" }}
+      - run:
+          name: Running tests 1
+          command: python test_billing_system_1.py
+      - save_cache:
+          key: cache-v1-{{ checksum "requirements.txt" }}
+          paths:
+            - "/usr/local/bin"
+  test2:
+    docker:
+      - image: cimg/python:3.10.1
+    steps:
+      - checkout
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - restore_cache:
+          keys: 
+            - cache-v1-{{ checksum "requirements.txt" }}
+      - run:
+          name: Running test 2
+          command: python test_billing_system_2.py
+      - save_cache:
+          key: cache-v1-{{ checksum "requirements.txt" }}
+          paths:
+            - "/usr/local/bin"
+  creating_artifacts:
+    docker:
+      - image: cimg/python:3.10.1
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: sudo chown -R circleci:circleci /usr/local/bin
+      - restore_cache:
+          keys: 
+            - cache-v1-{{ checksum "requirements.txt" }}
+      - run: |
+          rm -rf .git
+          mkdir images
+          docker build . -t ankita_img
+          docker images
+          mkdir -p images
+          docker save ankita_img>images/ankita_img.tar
+      - store_artifacts:
+          path: images/
+      - save_cache:
+          key: cache-v1-{{ checksum "requirements.txt" }}
+          paths:
+            - "/usr/local/bin"
+      - run:
+          name: checking the store_artifacts
+          command: ls -lrth images
+workflows:
+  workflow1:
+    jobs:
+      - build
+      - test1:
+          requires: 
+            - build
+      - test2:
+          requires:
+            - build
+      - approval:
+          type: approval
+          requires:
+            - test1
+            - test2
+      - creating_artifacts:
+          requires:
+            - approval
+  workflow2:
+    triggers:
+      - schedule:
+          cron: "0 17 * * *"
+          filters: 
+            branches:
+              only:
+                - ankita_caselet
+    jobs:
+      - build
+      - test1:
+          requires: 
+            - build
+      - test2:
+          requires:
+            - test1
+      - approval:
+          type: approval
+          requires:
+            - test2
+      - creating_artifacts:
+          requires:
+            - approval

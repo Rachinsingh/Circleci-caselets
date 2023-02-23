@@ -49,10 +49,9 @@ jobs:
       - run: |
           docker build . -t akhil_cci_1
           docker images | grep akhil
-          mkdir cci_image
-          docker save akhil_cci_1>cci_images/akhil_cci_1.tar
-      - store_artifacts:
-          path: cci_image/
+          docker save -o akhil_cci_1.tar akhil_cci_1
+      # - store_artifacts:
+      #     path: cci_image/
 
 
 workflows:

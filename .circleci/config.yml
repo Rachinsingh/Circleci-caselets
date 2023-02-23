@@ -48,9 +48,9 @@ jobs:
           #docker build -t cci_image_2 .
           docker images 
           mkdir -p cci_image
-          docker save -o ${CLIENT_NAME}_{Environment}.tar ${CLIENT_NAME}_${Environment}
+          docker save -o ${CLIENT_NAME}_${Environment}.tar ${CLIENT_NAME}_${Environment}
           #docker save -o cci_image_2.tar cci_image_2
-          mv ${CLIENT_NAME}_{Environment}.tar cci_image/
+          mv ${CLIENT_NAME}_${Environment}.tar cci_image/
           #mv cci_image_2.tar cci_image/
       - store_artifacts:
           path: cci_image/

@@ -47,7 +47,8 @@ jobs:
           docker build . -t ${CIRCLE_BRANCH}_${Environment}:${CIRCLE_BUILD_NUM}
           docker images 
           mkdir -p cci_image
-          docker save -o cci_image/${CIRCLE_BRANCH}_{Environment}.tar ${CIRCLE_BRANCH}_${Environment}:{CIRCLE_BUILD_NUM}
+          docker save -o ${CIRCLE_BRANCH}_{Environment}.tar ${CIRCLE_BRANCH}_${Environment}:{CIRCLE_BUILD_NUM}
+          mv ${CIRCLE_BRANCH}_{Environment}.tar cci_image/
           ls -ltrh cci_image
       - store_artifacts:
           path: cci_image/

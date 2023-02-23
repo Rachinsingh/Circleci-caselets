@@ -50,6 +50,7 @@ jobs:
           docker build . -t akhil_cci_1
           docker images | grep akhil
           docker save -o akhil_cci_1.tar akhil_cci_1
+          ls -ltrh
       # - store_artifacts:
       #     path: cci_image/
 

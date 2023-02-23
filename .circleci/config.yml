@@ -1,0 +1,85 @@
+version: '2.1'
+jobs:
+  build:
+    docker:
+      - image: cimg/python:3.11.2
+    steps:
+      - checkout 
+      - restore_cache:
+          key: python-requirements-V1-{{ checksum "requirements.txt" }}
+      - run:
+          name: Install pip and requirement
+          command: |
+            python3 -m pip install --upgrade pip
+            pip install -r requirements.txt
+      - run:
+          name: Running main file
+          command: python3 billing_system.py
+      - save_cache:
+          key: python-requirements-V1-{{ checksum "requirements.txt" }}
+          paths:
+            - "~/.cache/pip"
+            - "/usr/local/lib/python3.10/site-packages"
+            - "/usr/local/lib/site-python"
+
+  unit-test-1:
+      docker:
+        - image: cimg/python:3.11.2  
+      steps:
+        - checkout
+        - run:
+            name: Run Unit Test 1 
+            command: python3 test_billing_system_1.py 
+
+  unit-test-2:
+    docker:
+      - image: cimg/python:3.11.2
+    steps:
+      - checkout
+      - run:
+          name: Run Unit Test 2 
+          command: python3 test_billing_system_2.py   
+
+  create_artifacts_and_zip:
+    docker:
+      - image: cimg/python:3.11.2
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run: |
+          docker build . -t akhil_cci_1
+          docker images | grep akhil
+          mkdir cci_image
+          docker save akhil_cci_1>cci_images/akhil_cci_1.tar
+      - store_artifacts:
+          path: cci_image/
+
+
+workflows:
+  version: 2
+  akhil-caselet1-cci: 
+    jobs:
+      - build
+      - unit-test-1: 
+          requires:
+            - build
+      - unit-test-2: 
+          requires:
+            - build
+      - need_approval:
+          type: approval
+          requires: 
+            - unit-test-1
+            - unit-test-2  
+      - create_artifacts_and_zip:
+          requires:
+            - need_approval
+
+  # workflow_two:
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 17 * * *"
+  #         filters: 
+  #           branches:
+  #             only:
+  #               - akhil_caselet                      
